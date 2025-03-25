@@ -1,0 +1,2140 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emission Data Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --accent-primary: #007bff;
+            --accent-secondary: #6c757d;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --card-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --accent-primary: #0d6efd;
+            --accent-secondary: #495057;
+            --card-shadow: 0 2px 4px rgba(255,255,255,0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+            color: var(--text-primary);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0061f2 0%, #6c8fff 100%);
+            color: white;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-logo img {
+            height: 50px;
+            width: auto;
+        }
+
+        .header-text {
+            flex: 1;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header p {
+            margin: 0.5rem 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+            color: white;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .header-stat {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 140px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header-stat-label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 0.25rem;
+        }
+
+        .header-stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .filters-section {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-group {
+            position: relative;
+            min-width: 0;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #5a6169;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+            padding: 0.75rem;
+            padding-left: 2.5rem;
+            border: 1px solid #e0e4e8;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+            background-color: white;
+            box-sizing: border-box;
+        }
+
+        .filter-group i {
+            position: absolute;
+            left: 1rem;
+            top: 2.3rem;
+            color: #5a6169;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            border-color: #0061f2;
+            outline: none;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: #0061f2;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0052cc;
+        }
+
+        .btn-secondary {
+            background: #e0e4e8;
+            color: #5a6169;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d4d8;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .icon-blue {
+            background: rgba(0, 97, 242, 0.1);
+            color: #0061f2;
+        }
+
+        .icon-green {
+            background: rgba(0, 196, 140, 0.1);
+            color: #00c48c;
+        }
+
+        .icon-orange {
+            background: rgba(255, 153, 0, 0.1);
+            color: #ff9900;
+        }
+
+        .icon-purple {
+            background: rgba(157, 78, 221, 0.1);
+            color: #9d4edd;
+        }
+
+        .card-content h3 {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #5a6169;
+            font-weight: 500;
+        }
+
+        .card-content .value {
+            margin: 0.25rem 0 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1a1f36;
+        }
+
+        .main-chart {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            height: 800px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 500px;
+            margin-bottom: 1rem;
+        }
+
+        #trendChart {
+            width: 100% !important;
+            height: 500px !important;
+        }
+
+        .chart-header {
+            margin-bottom: 1rem;
+        }
+
+        .chart-title {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1f36;
+        }
+
+        .chart-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .chart-filters {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-filter-group {
+            flex: 1;
+            min-width: 200px;
+            max-width: 300px;
+        }
+
+        .chart-filter-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #5a6169;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .chart-filter-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e0e4e8;
+            border-radius: 6px;
+            background: white;
+            color: #1a1f36;
+        }
+
+        .chart-filter-group select[multiple] {
+            height: 100px;
+        }
+
+        .chart-legend-container {
+            margin-top: auto;
+            padding: 1rem;
+            border-top: 1px solid #e0e4e8;
+            max-height: 120px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 0 0 10px 10px;
+        }
+
+        .chart-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: flex-start;
+            padding: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 16px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            border: 1px solid #e0e4e8;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .legend-item:hover {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+
+        .legend-item.inactive {
+            opacity: 0.5;
+            background: #f1f3f5;
+        }
+
+        .legend-color {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 10px;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-primary);
+            color: white;
+            cursor: pointer;
+            border: none;
+            box-shadow: var(--card-shadow);
+        }
+        .map-container {
+            height: 400px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+        }
+        .rankings {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: var(--card-shadow);
+        }
+        .ranking-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .ranking-card {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            padding: 15px;
+            border-radius: 8px;
+            position: relative;
+        }
+        .ranking-position {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 30px;
+            height: 30px;
+            background: var(--accent-primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .environmental-impact {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: var(--card-shadow);
+        }
+        .impact-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .impact-card {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            color: white;
+        }
+        .impact-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .impact-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .vessel-info {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .vessel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .vessel-title {
+            margin: 0;
+            color: #1a1f36;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .vessel-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn-export {
+            background: #00c48c;
+            color: white;
+        }
+
+        .btn-export:hover {
+            background: #00a376;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #5a6169;
+        }
+
+        .stat-card .value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #0061f2;
+            margin: 0.5rem 0;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e0e4e8;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #1a1f36;
+            white-space: nowrap;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        #loading {
+            text-align: center;
+            padding: 2rem;
+            font-size: 1.1rem;
+            color: #5a6169;
+        }
+
+        #dataContainer {
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 1200px) {
+            .filters {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.25rem;
+            }
+
+            .summary-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .chart-filter-group {
+                min-width: 180px;
+            }
+
+            .header-stat {
+                min-width: 130px;
+                padding: 0.6rem 1rem;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .header-logo img {
+                height: 40px;
+            }
+
+            .main-chart {
+                height: 700px;
+            }
+
+            .chart-container {
+                min-height: 400px;
+            }
+
+            #trendChart {
+                height: 400px !important;
+            }
+
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem 0;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+
+            .header-logo {
+                justify-content: center;
+            }
+
+            .header-actions {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 0.75rem;
+            }
+
+            .header-stat {
+                min-width: 110px;
+                font-size: 0.9rem;
+            }
+
+            .filters {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-buttons {
+                justify-content: stretch;
+            }
+
+            .btn {
+                flex: 1;
+                text-align: center;
+                justify-content: center;
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .main-chart {
+                height: 600px;
+                padding: 1rem;
+            }
+
+            .chart-container {
+                min-height: 350px;
+            }
+
+            #trendChart {
+                height: 350px !important;
+            }
+
+            .chart-legend-container {
+                max-height: 100px;
+            }
+
+            .legend-item {
+                font-size: 0.75rem;
+                padding: 0.3rem 0.6rem;
+            }
+
+            .map-container {
+                height: 300px;
+            }
+
+            .impact-metrics {
+                grid-template-columns: 1fr;
+            }
+
+            .ranking-list {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .header-stat {
+                min-width: 100px;
+                padding: 0.5rem;
+            }
+
+            .header-stat-label {
+                font-size: 0.75rem;
+            }
+
+            .header-stat-value {
+                font-size: 1rem;
+            }
+
+            .card-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.25rem;
+            }
+
+            .card-content .value {
+                font-size: 1.25rem;
+            }
+
+            .main-chart {
+                height: 500px;
+            }
+
+            .chart-container {
+                min-height: 300px;
+            }
+
+            #trendChart {
+                height: 300px !important;
+            }
+
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+
+            th, td {
+                padding: 0.75rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) {
+            .btn:hover {
+                transform: none;
+            }
+
+            .legend-item:hover {
+                transform: none;
+            }
+
+            .summary-card:hover {
+                transform: none;
+            }
+
+            /* Increase touch targets */
+            .filter-group select,
+            .filter-group input {
+                min-height: 44px;
+            }
+
+            .btn {
+                min-height: 44px;
+            }
+
+            .legend-item {
+                min-height: 36px;
+            }
+        }
+
+        /* Dark mode optimizations */
+        @media (prefers-color-scheme: dark) {
+            [data-theme="dark"] .header {
+                background: linear-gradient(135deg, #004299 0%, #0061f2 100%);
+            }
+
+            [data-theme="dark"] .header-stat {
+                background: rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        /* Print media optimization */
+        @media print {
+            .header {
+                background: none !important;
+                color: black !important;
+                padding: 1rem 0;
+            }
+
+            .header-actions,
+            .filter-buttons,
+            .chart-actions,
+            .theme-toggle {
+                display: none !important;
+            }
+
+            .main-chart {
+                break-inside: avoid;
+            }
+
+            .chart-legend-container {
+                break-inside: avoid;
+            }
+
+            table {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="header-logo">
+                <img src="https://upload.wikimedia.org/wikipedia/en/thumb/e/e8/Shell_logo.svg/1024px-Shell_logo.svg.png" alt="Shell Logo">
+            </div>
+            <div class="header-text">
+                <h1>
+                    <i class="fas fa-chart-line"></i>
+                    Emission Data Dashboard
+                </h1>
+                <p>Real-time vessel emission monitoring and analysis</p>
+            </div>
+            <div class="header-actions">
+                <div class="header-stat">
+                    <div class="header-stat-label">Active Vessels</div>
+                    <div class="header-stat-value" id="headerActiveVessels">57</div>
+                </div>
+                <div class="header-stat">
+                    <div class="header-stat-label">Total CO2 (MT)</div>
+                    <div class="header-stat-value" id="headerTotalCO2">2.36M</div>
+                </div>
+                <div class="header-stat">
+                    <div class="header-stat-label">Last Updated</div>
+                    <div class="header-stat-value" id="headerLastUpdated">Just Now</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="filters-section">
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="startDate">Start Date</label>
+                    <i class="far fa-calendar"></i>
+                    <input type="date" id="startDate" value="2024-01-01">
+                </div>
+                <div class="filter-group">
+                    <label for="endDate">End Date</label>
+                    <i class="far fa-calendar"></i>
+                    <input type="date" id="endDate" value="2024-10-06">
+                </div>
+                <div class="filter-group">
+                    <label for="vesselSearch">Search Vessel</label>
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="vesselSearch" placeholder="Enter vessel name...">
+                </div>
+                <div class="filter-group">
+                    <label for="vesselClass">Vessel Class</label>
+                    <i class="fas fa-ship"></i>
+                    <select id="vesselClass">
+                        <option value="">All Classes</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-buttons">
+                <button class="btn btn-primary" onclick="applyFilters()">
+                    <i class="fas fa-filter"></i> Apply Filters
+                </button>
+                <button class="btn btn-secondary" onclick="resetFilters()">
+                    <i class="fas fa-undo"></i> Reset
+                </button>
+            </div>
+        </div>
+
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="card-icon icon-blue">
+                    <i class="fas fa-ship"></i>
+                </div>
+                <div class="card-content">
+                    <h3>Active Vessels</h3>
+                    <div class="value" id="activeVessels">57</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="card-icon icon-green">
+                    <i class="fas fa-route"></i>
+                </div>
+                <div class="card-content">
+                    <h3>Total Distance (NM)</h3>
+                    <div class="value" id="totalDistance">3,905,712.00</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="card-icon icon-orange">
+                    <i class="fas fa-gas-pump"></i>
+                </div>
+                <div class="card-content">
+                    <h3>Total Fuel (MT)</h3>
+                    <div class="value" id="totalFuel">148,921.60</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="card-icon icon-purple">
+                    <i class="fas fa-cloud"></i>
+                </div>
+                <div class="card-content">
+                    <h3>Total CO2 (MT)</h3>
+                    <div class="value" id="totalCO2">2,368,630.40</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-chart">
+            <div class="chart-header">
+                <h2 class="chart-title">Emission Trends</h2>
+                <div class="chart-actions">
+                    <button class="btn btn-secondary" onclick="toggleChartType()">
+                        <i class="fas fa-chart-line"></i> Toggle Chart Type
+                    </button>
+                    <button class="btn btn-secondary" onclick="downloadChart()">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
+            </div>
+            <div class="chart-filters">
+                <div class="chart-filter-group">
+                    <label for="chartVesselClass">Filter by Vessel Class:</label>
+                    <select id="chartVesselClass" multiple>
+                        <option value="all" selected>All Classes</option>
+                    </select>
+                </div>
+                <div class="chart-filter-group">
+                    <label for="chartVesselSelect">Filter by Vessels:</label>
+                    <select id="chartVesselSelect" multiple>
+                        <option value="all" selected>All Vessels</option>
+                    </select>
+                </div>
+                <div class="chart-filter-group">
+                    <label for="chartMetric">Select Metric:</label>
+                    <select id="chartMetric">
+                        <option value="co2">CO2 Emissions</option>
+                        <option value="fuel">Fuel Consumption</option>
+                        <option value="distance">Distance Traveled</option>
+                        <option value="efficiency">Efficiency (CO2/NM)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+            <div class="chart-legend-container">
+                <div id="chartLegend" class="chart-legend"></div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">Loading data...</div>
+        <div id="dataContainer"></div>
+
+        <div class="map-container" id="vesselMap"></div>
+        <div class="environmental-impact">
+            <h2>Environmental Impact Analysis</h2>
+            <div class="impact-metrics" id="impactMetrics"></div>
+        </div>
+        <div class="rankings">
+            <h2>Performance Rankings</h2>
+            <div class="ranking-list" id="rankingList"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/get_consolidated_emission_data/';
+        const API_KEY = 'edfa092c3-5427-489001-d550-2cc82f835dcb';
+        let originalData = null;
+        let charts = {};
+        let map = null;
+
+        async function fetchData(startDate = '2024-01-01', endDate = '2024-10-06') {
+            try {
+                const response = await fetch(`${API_URL}?api_key=${API_KEY}&start_date=${startDate}&end_date=${endDate}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Validate the response data
+                if (!data || !Array.isArray(data)) {
+                    throw new Error('Invalid data format received from server');
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showError(error.message);
+                return null;
+            }
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return 'N/A';
+            return new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(num);
+        }
+
+        function formatPercentage(num) {
+            if (num === null || num === undefined) return 'N/A';
+            return `${formatNumber(num)}%`;
+        }
+
+        function createSummaryStats(vesselData) {
+            return `
+                <div class="summary-stats">
+                    <div class="stat-card">
+                        <h3>Total CO2 Emissions</h3>
+                        <div class="value">${formatNumber(vesselData.total.co2)} MT</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Distance</h3>
+                        <div class="value">${formatNumber(vesselData.total.distance)} NM</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Fuel Consumption</h3>
+                        <div class="value">${formatNumber(vesselData.total.total_fuel)} MT</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Steaming Hours</h3>
+                        <div class="value">${formatNumber(vesselData.total.steaming_hours)}</div>
+                    </div>
+                </div>`;
+        }
+
+        function createCharts(vesselData, containerId) {
+            const chartContainer = document.createElement('div');
+            chartContainer.className = 'dashboard';
+            
+            // Emissions Distribution Chart
+            const emissionsDiv = document.createElement('div');
+            emissionsDiv.className = 'chart-container';
+            emissionsDiv.innerHTML = '<canvas></canvas>';
+            
+            // Fuel Consumption Chart
+            const fuelDiv = document.createElement('div');
+            fuelDiv.className = 'chart-container';
+            fuelDiv.innerHTML = '<canvas></canvas>';
+            
+            // Operations Chart
+            const opsDiv = document.createElement('div');
+            opsDiv.className = 'chart-container full-width';
+            opsDiv.innerHTML = '<canvas></canvas>';
+            
+            chartContainer.appendChild(emissionsDiv);
+            chartContainer.appendChild(fuelDiv);
+            chartContainer.appendChild(opsDiv);
+
+            // Create Charts
+            const emissionsChart = new Chart(emissionsDiv.querySelector('canvas'), {
+                type: 'pie',
+                data: {
+                    labels: ['Laden', 'Ballast', 'Port'],
+                    datasets: [{
+                        data: [
+                            vesselData.laden.co2,
+                            vesselData.ballast.co2,
+                            vesselData.port.co2
+                        ],
+                        backgroundColor: ['#36a2eb', '#ff6384', '#4bc0c0']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'CO2 Emissions Distribution'
+                        }
+                    }
+                }
+            });
+
+            const fuelChart = new Chart(fuelDiv.querySelector('canvas'), {
+                type: 'pie',
+                data: {
+                    labels: ['Fuel', 'Gas', 'LSFO', 'LNG'],
+                    datasets: [{
+                        data: [
+                            vesselData.fuel_cons_in_per,
+                            vesselData.gas_cons_in_per,
+                            vesselData.lsfo_cons_in_per,
+                            vesselData.lng_cons_in_per
+                        ],
+                        backgroundColor: ['#36a2eb', '#ff6384', '#4bc0c0', '#ffcd56']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Fuel Consumption Distribution'
+                        }
+                    }
+                }
+            });
+
+            const opsChart = new Chart(opsDiv.querySelector('canvas'), {
+                type: 'bar',
+                data: {
+                    labels: ['Laden', 'Ballast', 'Port'],
+                    datasets: [
+                        {
+                            label: 'Distance (NM)',
+                            data: [
+                                vesselData.laden.distance,
+                                vesselData.ballast.distance,
+                                0
+                            ],
+                            backgroundColor: '#36a2eb'
+                        },
+                        {
+                            label: 'Fuel Consumption (MT)',
+                            data: [
+                                vesselData.laden.total_fuel,
+                                vesselData.ballast.total_fuel,
+                                vesselData.port.total_fuel
+                            ],
+                            backgroundColor: '#ff6384'
+                        },
+                        {
+                            label: 'CO2 Emissions (MT)',
+                            data: [
+                                vesselData.laden.co2,
+                                vesselData.ballast.co2,
+                                vesselData.port.co2
+                            ],
+                            backgroundColor: '#4bc0c0'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Operational Metrics Comparison'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            return chartContainer;
+        }
+
+        function createVesselSection(vesselData) {
+            const container = document.createElement('div');
+            container.className = 'vessel-info';
+            
+            // Vessel Info Section with Export Button
+            container.innerHTML = `
+                <div class="vessel-header">
+                    <h2 class="vessel-title">Vessel: ${vesselData.ship_name} (${vesselData.ship_class})</h2>
+                    <div class="vessel-actions">
+                        <button class="btn btn-export" onclick="exportVesselData('${vesselData.ship_name}', ${JSON.stringify(vesselData).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-file-excel"></i> Export to Excel
+                        </button>
+                    </div>
+                </div>
+                <p><strong>Total Transported Cargo:</strong> ${formatNumber(vesselData.total_transported_cargo)} MT</p>
+            `;
+            
+            // Add Summary Statistics
+            container.innerHTML += createSummaryStats(vesselData);
+            
+            // Add Charts
+            container.appendChild(createCharts(vesselData));
+            
+            // Add Detailed Table
+            const table = document.createElement('table');
+            const headers = `
+                <tr>
+                    <th>Category</th>
+                    <th>CO2 (MT)</th>
+                    <th>Total Fuel (MT)</th>
+                    <th>Gas (MT)</th>
+                    <th>VLSFO (MT)</th>
+                    <th>LNG (MT)</th>
+                    <th>Distance (NM)</th>
+                    <th>Steaming Hours</th>
+                    <th>Avg Speed (knots)</th>
+                    <th>Time Util. (%)</th>
+                    <th>Dist. Util. (%)</th>
+                </tr>`;
+            
+            function createDataRow(category, data, isTotal = false) {
+                const style = isTotal ? 'font-weight: bold;' : '';
+                return `
+                    <tr style="${style}">
+                        <td>${category}</td>
+                        <td>${formatNumber(data.co2)}</td>
+                        <td>${formatNumber(data.total_fuel)}</td>
+                        <td>${formatNumber(data.total_gas)}</td>
+                        <td>${formatNumber(data.total_vlsfo)}</td>
+                        <td>${formatNumber(data.total_lng)}</td>
+                        <td>${formatNumber(data.distance)}</td>
+                        <td>${formatNumber(data.steaming_hours)}</td>
+                        <td>${formatNumber(data.avg_speed)}</td>
+                        <td>${formatNumber(data.time_utilization_in_per)}</td>
+                        <td>${formatNumber(data.distance_utilization_in_per)}</td>
+                    </tr>`;
+            }
+            
+            table.innerHTML = headers +
+                createDataRow('Total', vesselData.total, true) +
+                createDataRow('Laden', vesselData.laden) +
+                createDataRow('Ballast', vesselData.ballast) +
+                createDataRow('Port', vesselData.port);
+            
+            container.appendChild(table);
+            return container;
+        }
+
+        function exportVesselData(vesselName, vesselData) {
+            const workbook = XLSX.utils.book_new();
+            
+            // Create Overview Sheet
+            const overviewData = [{
+                'Vessel Name': vesselData.ship_name,
+                'Vessel Class': vesselData.ship_class,
+                'Total Transported Cargo (MT)': vesselData.total_transported_cargo,
+                'Total CO2 (MT)': vesselData.total.co2,
+                'Total Distance (NM)': vesselData.total.distance,
+                'Total Fuel (MT)': vesselData.total.total_fuel,
+                'Average Speed (knots)': vesselData.total.avg_speed,
+                'Time Utilization (%)': vesselData.total.time_utilization_in_per,
+                'Distance Utilization (%)': vesselData.total.distance_utilization_in_per
+            }];
+            
+            const overviewSheet = XLSX.utils.json_to_sheet(overviewData);
+            XLSX.utils.book_append_sheet(workbook, overviewSheet, 'Overview');
+
+            // Create Detailed Operations Sheet
+            const operationsData = [
+                {
+                    'Category': 'Total',
+                    'CO2 (MT)': vesselData.total.co2,
+                    'Total Fuel (MT)': vesselData.total.total_fuel,
+                    'Gas (MT)': vesselData.total.total_gas,
+                    'VLSFO (MT)': vesselData.total.total_vlsfo,
+                    'LNG (MT)': vesselData.total.total_lng,
+                    'Distance (NM)': vesselData.total.distance,
+                    'Steaming Hours': vesselData.total.steaming_hours,
+                    'Avg Speed (knots)': vesselData.total.avg_speed,
+                    'Time Utilization (%)': vesselData.total.time_utilization_in_per,
+                    'Distance Utilization (%)': vesselData.total.distance_utilization_in_per
+                },
+                {
+                    'Category': 'Laden',
+                    'CO2 (MT)': vesselData.laden.co2,
+                    'Total Fuel (MT)': vesselData.laden.total_fuel,
+                    'Gas (MT)': vesselData.laden.total_gas,
+                    'VLSFO (MT)': vesselData.laden.total_vlsfo,
+                    'LNG (MT)': vesselData.laden.total_lng,
+                    'Distance (NM)': vesselData.laden.distance,
+                    'Steaming Hours': vesselData.laden.steaming_hours,
+                    'Avg Speed (knots)': vesselData.laden.avg_speed,
+                    'Time Utilization (%)': vesselData.laden.time_utilization_in_per,
+                    'Distance Utilization (%)': vesselData.laden.distance_utilization_in_per
+                },
+                {
+                    'Category': 'Ballast',
+                    'CO2 (MT)': vesselData.ballast.co2,
+                    'Total Fuel (MT)': vesselData.ballast.total_fuel,
+                    'Gas (MT)': vesselData.ballast.total_gas,
+                    'VLSFO (MT)': vesselData.ballast.total_vlsfo,
+                    'LNG (MT)': vesselData.ballast.total_lng,
+                    'Distance (NM)': vesselData.ballast.distance,
+                    'Steaming Hours': vesselData.ballast.steaming_hours,
+                    'Avg Speed (knots)': vesselData.ballast.avg_speed,
+                    'Time Utilization (%)': vesselData.ballast.time_utilization_in_per,
+                    'Distance Utilization (%)': vesselData.ballast.distance_utilization_in_per
+                },
+                {
+                    'Category': 'Port',
+                    'CO2 (MT)': vesselData.port.co2,
+                    'Total Fuel (MT)': vesselData.port.total_fuel,
+                    'Gas (MT)': vesselData.port.total_gas,
+                    'VLSFO (MT)': vesselData.port.total_vlsfo,
+                    'LNG (MT)': vesselData.port.total_lng,
+                    'Distance (NM)': vesselData.port.distance,
+                    'Steaming Hours': vesselData.port.steaming_hours,
+                    'Avg Speed (knots)': vesselData.port.avg_speed,
+                    'Time Utilization (%)': vesselData.port.time_utilization_in_per,
+                    'Distance Utilization (%)': vesselData.port.distance_utilization_in_per
+                }
+            ];
+
+            const operationsSheet = XLSX.utils.json_to_sheet(operationsData);
+            
+            // Add column widths and styling
+            operationsSheet['!cols'] = [
+                { wch: 10 }, // Category
+                { wch: 12 }, // CO2
+                { wch: 12 }, // Total Fuel
+                { wch: 10 }, // Gas
+                { wch: 10 }, // VLSFO
+                { wch: 10 }, // LNG
+                { wch: 12 }, // Distance
+                { wch: 15 }, // Steaming Hours
+                { wch: 15 }, // Avg Speed
+                { wch: 18 }, // Time Utilization
+                { wch: 20 }  // Distance Utilization
+            ];
+
+            XLSX.utils.book_append_sheet(workbook, operationsSheet, 'Operational Data');
+
+            // Create Fuel Distribution Sheet
+            const fuelData = [
+                {
+                    'Fuel Type': 'Fuel Oil',
+                    'Consumption (MT)': vesselData.total.total_fuel,
+                    'Consumption (%)': vesselData.fuel_cons_in_per,
+                },
+                {
+                    'Fuel Type': 'Gas',
+                    'Consumption (MT)': vesselData.total.total_gas,
+                    'Consumption (%)': vesselData.gas_cons_in_per,
+                },
+                {
+                    'Fuel Type': 'VLSFO',
+                    'Consumption (MT)': vesselData.total.total_vlsfo,
+                    'Consumption (%)': vesselData.lsfo_cons_in_per,
+                },
+                {
+                    'Fuel Type': 'LNG',
+                    'Consumption (MT)': vesselData.total.total_lng,
+                    'Consumption (%)': vesselData.lng_cons_in_per,
+                }
+            ];
+
+            const fuelSheet = XLSX.utils.json_to_sheet(fuelData);
+            XLSX.utils.book_append_sheet(workbook, fuelSheet, 'Fuel Distribution');
+
+            // Create Performance Metrics Sheet
+            const performanceData = [{
+                'Metric': 'Value',
+                'CO2 per Distance (MT/NM)': vesselData.total.co2 / vesselData.total.distance,
+                'Fuel per Distance (MT/NM)': vesselData.total.total_fuel / vesselData.total.distance,
+                'Average Speed (knots)': vesselData.total.avg_speed,
+                'Time Utilization (%)': vesselData.total.time_utilization_in_per,
+                'Distance Utilization (%)': vesselData.total.distance_utilization_in_per,
+                'Total Steaming Hours': vesselData.total.steaming_hours
+            }];
+
+            const performanceSheet = XLSX.utils.json_to_sheet(performanceData);
+            XLSX.utils.book_append_sheet(workbook, performanceSheet, 'Performance Metrics');
+
+            // Save the file with formatted name and date
+            const date = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(workbook, `${vesselName}_emission_data_${date}.xlsx`);
+        }
+
+        function updateVesselClassOptions(data) {
+            const vesselClassSelect = document.getElementById('vesselClass');
+            const classes = new Set(data.map(vessel => vessel.ship_class));
+            vesselClassSelect.innerHTML = '<option value="">All Classes</option>';
+            classes.forEach(className => {
+                if (className) {
+                    const option = document.createElement('option');
+                    option.value = className;
+                    option.textContent = className;
+                    vesselClassSelect.appendChild(option);
+                }
+            });
+        }
+
+        function filterData(data) {
+            const vesselSearch = document.getElementById('vesselSearch').value.toLowerCase();
+            const vesselClass = document.getElementById('vesselClass').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            return data.filter(vessel => {
+                const matchesSearch = vessel.ship_name.toLowerCase().includes(vesselSearch);
+                const matchesClass = !vesselClass || vessel.ship_class === vesselClass;
+                return matchesSearch && matchesClass;
+            });
+        }
+
+        function displayData(data) {
+            const container = document.getElementById('dataContainer');
+            const loading = document.getElementById('loading');
+            
+            if (!data || !Array.isArray(data)) {
+                loading.textContent = 'Error: Invalid data received';
+                loading.style.color = 'red';
+                return;
+            }
+
+            loading.style.display = 'none';
+            container.innerHTML = '';
+            
+            const filteredData = filterData(data);
+            
+            // Update summary cards
+            updateSummaryCards(filteredData);
+
+            // Create trend chart
+            createTrendChart(filteredData);
+            
+            // Create individual vessel sections with detailed data
+            filteredData.forEach(vesselData => {
+                const vesselSection = createVesselSection(vesselData);
+                container.appendChild(vesselSection);
+            });
+
+            if (filteredData.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">No vessels found matching the current filters.</p>';
+            }
+
+            // Update map and other visualizations
+            const mapInstance = initializeMap();
+            updateMap(filteredData, mapInstance);
+            createEnvironmentalImpact(filteredData);
+            createPerformanceRankings(filteredData);
+        }
+
+        async function applyFilters() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+            loading.textContent = 'Loading data...';
+            loading.style.color = '#666';
+
+            try {
+                originalData = await fetchData(startDate, endDate);
+                if (originalData) {
+                    displayData(originalData);
+                    updateVesselClassOptions(originalData);
+                }
+            } catch (error) {
+                console.error('Application error:', error);
+                showError(error.message);
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('startDate').value = '2024-01-01';
+            document.getElementById('endDate').value = '2024-10-06';
+            document.getElementById('vesselSearch').value = '';
+            document.getElementById('vesselClass').value = '';
+            if (originalData) {
+                displayData(originalData);
+            }
+        }
+
+        // Add event listener for real-time vessel search
+        document.getElementById('vesselSearch').addEventListener('input', () => {
+            if (originalData) {
+                displayData(originalData);
+            }
+        });
+
+        document.getElementById('vesselClass').addEventListener('change', () => {
+            if (originalData) {
+                displayData(originalData);
+            }
+        });
+
+        function createFleetOverview(data) {
+            const fleetStats = document.getElementById('fleetStats');
+            
+            // Calculate fleet-wide metrics
+            const totalEmissions = data.reduce((sum, vessel) => sum + vessel.total.co2, 0);
+            const totalDistance = data.reduce((sum, vessel) => sum + vessel.total.distance, 0);
+            const totalFuel = data.reduce((sum, vessel) => sum + vessel.total.total_fuel, 0);
+            const avgSpeed = data.reduce((sum, vessel) => sum + vessel.total.avg_speed, 0) / data.length;
+            
+            const metrics = [
+                {
+                    title: 'Total Fleet Emissions',
+                    value: formatNumber(totalEmissions) + ' MT',
+                    change: '+2.5%'
+                },
+                {
+                    title: 'Fleet Distance Covered',
+                    value: formatNumber(totalDistance) + ' NM',
+                    change: '+5.1%'
+                },
+                {
+                    title: 'Total Fuel Consumption',
+                    value: formatNumber(totalFuel) + ' MT',
+                    change: '-1.8%'
+                },
+                {
+                    title: 'Average Fleet Speed',
+                    value: formatNumber(avgSpeed) + ' knots',
+                    change: '0%'
+                }
+            ];
+
+            fleetStats.innerHTML = metrics.map(metric => `
+                <div class="metric-card">
+                    <div class="metric-title">${metric.title}</div>
+                    <div class="metric-value">${metric.value}</div>
+                    <div class="metric-change ${metric.change.startsWith('+') ? 'positive-change' : 'negative-change'}">
+                        ${metric.change} from previous period
+                    </div>
+                </div>
+            `).join('');
+
+            createTrendChart(data);
+        }
+
+        function createTrendChart(data) {
+            const ctx = document.getElementById('trendChart');
+            const filteredData = filterData(data);
+            
+            // Destroy existing chart if it exists
+            if (charts.trendChart) {
+                charts.trendChart.destroy();
+                charts.trendChart = null;
+            }
+            
+            // Get unique vessel classes and prepare initial datasets
+            const vesselClasses = [...new Set(filteredData.map(v => v.ship_class))];
+            const vesselClassColors = {};
+            vesselClasses.forEach((className, index) => {
+                vesselClassColors[className] = getColorForIndex(index);
+            });
+
+            // Prepare time series data
+            const timeSeriesData = {};
+            filteredData.forEach(vessel => {
+                if (!timeSeriesData[vessel.ship_class]) {
+                    timeSeriesData[vessel.ship_class] = {
+                        co2: [],
+                        fuel: [],
+                        distance: [],
+                        efficiency: []
+                    };
+                }
+                
+                // Aggregate data by vessel class
+                timeSeriesData[vessel.ship_class].co2.push({
+                    x: vessel.ship_name,
+                    y: vessel.total.co2
+                });
+                timeSeriesData[vessel.ship_class].fuel.push({
+                    x: vessel.ship_name,
+                    y: vessel.total.total_fuel
+                });
+                timeSeriesData[vessel.ship_class].distance.push({
+                    x: vessel.ship_name,
+                    y: vessel.total.distance
+                });
+                timeSeriesData[vessel.ship_class].efficiency.push({
+                    x: vessel.ship_name,
+                    y: vessel.total.co2 / (vessel.total.distance || 1)
+                });
+            });
+
+            // Create datasets for initial metric (CO2)
+            const datasets = vesselClasses.map(className => ({
+                label: className,
+                data: timeSeriesData[className].co2,
+                borderColor: vesselClassColors[className],
+                backgroundColor: vesselClassColors[className],
+                fill: false,
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }));
+
+            // Initialize chart with enhanced options
+            charts.trendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'CO2 Emissions by Vessel Class',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            padding: {
+                                top: 10,
+                                bottom: 30
+                            }
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            titleColor: '#1a1f36',
+                            bodyColor: '#1a1f36',
+                            borderColor: '#e0e4e8',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: true,
+                            boxWidth: 8,
+                            boxHeight: 8,
+                            usePointStyle: true,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    let value = context.parsed.y;
+                                    let unit = context.dataset.unit || 'MT';
+                                    return `${label}: ${formatNumber(value)} ${unit}`;
+                                }
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: 20,
+                            right: 25,
+                            bottom: 10,
+                            left: 25
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'category',
+                            title: {
+                                display: true,
+                                text: 'Vessels',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                padding: {
+                                    top: 20
+                                }
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45,
+                                font: {
+                                    size: 10
+                                },
+                                padding: 10,
+                                autoSkip: false,
+                                maxTicksLimit: 20
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'CO2 Emissions (MT)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                padding: {
+                                    bottom: 10
+                                }
+                            },
+                            grid: {
+                                color: '#e0e4e8',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                },
+                                padding: 8,
+                                callback: function(value) {
+                                    return formatNumber(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Create custom legend with improved layout
+            const legendContainer = document.getElementById('chartLegend');
+            legendContainer.innerHTML = '';
+            
+            const legendWrapper = document.createElement('div');
+            legendWrapper.style.display = 'flex';
+            legendWrapper.style.flexWrap = 'wrap';
+            legendWrapper.style.gap = '0.75rem';
+            legendWrapper.style.justifyContent = 'flex-start';
+            
+            datasets.forEach((dataset, index) => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'legend-item';
+                legendItem.innerHTML = `
+                    <span class="legend-color" style="background: ${dataset.borderColor}"></span>
+                    <span>${dataset.label}</span>
+                `;
+                
+                legendItem.addEventListener('click', () => {
+                    const isActive = !legendItem.classList.contains('inactive');
+                    legendItem.classList.toggle('inactive');
+                    charts.trendChart.setDatasetVisibility(index, !isActive);
+                    charts.trendChart.update();
+                });
+                
+                legendWrapper.appendChild(legendItem);
+            });
+            
+            legendContainer.appendChild(legendWrapper);
+
+            // Update chart filters
+            const vesselClassSelect = document.getElementById('chartVesselClass');
+            const vesselSelect = document.getElementById('chartVesselSelect');
+            const metricSelect = document.getElementById('chartMetric');
+
+            // Populate vessel class filter
+            vesselClassSelect.innerHTML = `
+                <option value="all" selected>All Classes</option>
+                ${vesselClasses.map(c => `<option value="${c}">${c}</option>`).join('')}
+            `;
+
+            // Populate vessel filter
+            const vessels = filteredData.map(v => ({
+                name: v.ship_name,
+                class: v.ship_class
+            }));
+            vesselSelect.innerHTML = `
+                <option value="all" selected>All Vessels</option>
+                ${vessels.map(v => `<option value="${v.name}">${v.name}</option>`).join('')}
+            `;
+
+            // Handle filter changes
+            function updateChartData() {
+                const selectedClasses = Array.from(vesselClassSelect.selectedOptions)
+                    .map(opt => opt.value);
+                const selectedVessels = Array.from(vesselSelect.selectedOptions)
+                    .map(opt => opt.value);
+                const selectedMetric = metricSelect.value;
+
+                // Filter data based on selections
+                let filteredClasses = selectedClasses.includes('all') ? 
+                    vesselClasses : 
+                    selectedClasses;
+
+                // Update datasets
+                charts.trendChart.data.datasets = filteredClasses.map(className => ({
+                    label: className,
+                    data: timeSeriesData[className][selectedMetric].filter(point => 
+                        selectedVessels.includes('all') || selectedVessels.includes(point.x)
+                    ),
+                    borderColor: vesselClassColors[className],
+                    backgroundColor: vesselClassColors[className],
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }));
+
+                // Update chart title and y-axis label
+                const metricLabels = {
+                    co2: 'CO2 Emissions (MT)',
+                    fuel: 'Fuel Consumption (MT)',
+                    distance: 'Distance Traveled (NM)',
+                    efficiency: 'CO2 Efficiency (MT/NM)'
+                };
+
+                charts.trendChart.options.plugins.title.text = `${metricLabels[selectedMetric]} by Vessel Class`;
+                charts.trendChart.options.scales.y.title.text = metricLabels[selectedMetric];
+
+                // Update tooltip callback
+                charts.trendChart.options.plugins.tooltip.callbacks.label = function(context) {
+                    let label = context.dataset.label || '';
+                    let value = context.parsed.y;
+                    let unit = selectedMetric === 'distance' ? 'NM' : 'MT';
+                    return `${label}: ${formatNumber(value)} ${unit}`;
+                };
+
+                charts.trendChart.update();
+            }
+
+            // Add event listeners
+            vesselClassSelect.addEventListener('change', updateChartData);
+            vesselSelect.addEventListener('change', updateChartData);
+            metricSelect.addEventListener('change', updateChartData);
+
+            return charts.trendChart;
+        }
+
+        function getColorForIndex(index) {
+            const colors = [
+                '#36a2eb', '#ff6384', '#4bc0c0', '#ffcd56', 
+                '#9966ff', '#ff9f40', '#c9cbcf', '#4dc9f6'
+            ];
+            return colors[index % colors.length];
+        }
+
+        function exportToExcel() {
+            if (!originalData) return;
+
+            const workbook = XLSX.utils.book_new();
+            
+            // Create vessel data worksheet
+            const vesselData = originalData.map(vessel => ({
+                'Vessel Name': vessel.ship_name,
+                'Vessel Class': vessel.ship_class,
+                'Total CO2 (MT)': vessel.total.co2,
+                'Total Distance (NM)': vessel.total.distance,
+                'Total Fuel (MT)': vessel.total.total_fuel,
+                'Average Speed (knots)': vessel.total.avg_speed,
+                'Time Utilization (%)': vessel.total.time_utilization_in_per,
+                'Distance Utilization (%)': vessel.total.distance_utilization_in_per
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(vesselData);
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Vessel Data');
+
+            // Create summary worksheet
+            const summaryData = [{
+                'Total Fleet Emissions (MT)': vesselData.reduce((sum, v) => sum + v['Total CO2 (MT)'], 0),
+                'Total Fleet Distance (NM)': vesselData.reduce((sum, v) => sum + v['Total Distance (NM)'], 0),
+                'Average Fleet Speed (knots)': vesselData.reduce((sum, v) => sum + v['Average Speed (knots)'], 0) / vesselData.length,
+                'Number of Vessels': vesselData.length
+            }];
+
+            const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+            // Save the file
+            XLSX.writeFile(workbook, 'emission_data_report.xlsx');
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function initializeMap() {
+            // Clean up existing map if it exists
+            if (map) {
+                map.remove();
+                map = null;
+            }
+
+            // Create new map instance
+            map = L.map('vesselMap').setView([0, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            return map;
+        }
+
+        function updateMap(data, map) {
+            if (!map) return;
+
+            // Clear existing markers
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            // Add new markers
+            data.forEach(vessel => {
+                if (vessel.last_position_lat && vessel.last_position_long) {
+                    const marker = L.marker([vessel.last_position_lat, vessel.last_position_long])
+                        .bindPopup(`
+                            <b>${vessel.ship_name}</b><br>
+                            Class: ${vessel.ship_class}<br>
+                            CO2: ${formatNumber(vessel.total.co2)} MT<br>
+                            Speed: ${formatNumber(vessel.total.avg_speed)} knots
+                        `);
+                    marker.addTo(map);
+                }
+            });
+        }
+
+        function createEnvironmentalImpact(data) {
+            const impactMetrics = document.getElementById('impactMetrics');
+            
+            // Calculate environmental metrics
+            const totalCO2 = data.reduce((sum, v) => sum + v.total.co2, 0);
+            const avgEfficiency = data.reduce((sum, v) => sum + (v.total.co2 / v.total.distance), 0) / data.length;
+            const totalFuelSaved = data.reduce((sum, v) => sum + (v.total.total_fuel * (v.fuel_efficiency_improvement || 0) / 100), 0);
+            
+            const metrics = [
+                {
+                    label: 'Total CO2 Impact',
+                    value: `${formatNumber(totalCO2)} MT`,
+                    description: 'Total fleet emissions'
+                },
+                {
+                    label: 'Carbon Intensity',
+                    value: `${formatNumber(avgEfficiency)} MT/NM`,
+                    description: 'Average emissions per nautical mile'
+                },
+                {
+                    label: 'Fuel Efficiency Gain',
+                    value: `${formatNumber(totalFuelSaved)} MT`,
+                    description: 'Total fuel saved through efficiency improvements'
+                },
+                {
+                    label: 'Environmental Score',
+                    value: calculateEnvironmentalScore(data),
+                    description: 'Fleet environmental performance score'
+                }
+            ];
+
+            impactMetrics.innerHTML = metrics.map(metric => `
+                <div class="impact-card">
+                    <div class="impact-label">${metric.label}</div>
+                    <div class="impact-value">${metric.value}</div>
+                    <div class="impact-description">${metric.description}</div>
+                </div>
+            `).join('');
+        }
+
+        function createPerformanceRankings(data) {
+            const rankingList = document.getElementById('rankingList');
+            
+            // Sort vessels by different metrics
+            const co2Rankings = [...data].sort((a, b) => a.total.co2 - b.total.co2);
+            const efficiencyRankings = [...data].sort((a, b) => 
+                (a.total.co2 / a.total.distance) - (b.total.co2 / b.total.distance)
+            );
+            const utilizationRankings = [...data].sort((a, b) => 
+                b.total.time_utilization_in_per - a.total.time_utilization_in_per
+            );
+
+            const rankings = [
+                {
+                    title: 'Best CO2 Performers',
+                    vessels: co2Rankings.slice(0, 5),
+                    metric: v => formatNumber(v.total.co2) + ' MT'
+                },
+                {
+                    title: 'Most Efficient Vessels',
+                    vessels: efficiencyRankings.slice(0, 5),
+                    metric: v => formatNumber(v.total.co2 / v.total.distance) + ' MT/NM'
+                },
+                {
+                    title: 'Highest Utilization',
+                    vessels: utilizationRankings.slice(0, 5),
+                    metric: v => formatNumber(v.total.time_utilization_in_per) + '%'
+                }
+            ];
+
+            rankingList.innerHTML = rankings.map(ranking => `
+                <div class="ranking-group">
+                    <h3>${ranking.title}</h3>
+                    ${ranking.vessels.map((vessel, index) => `
+                        <div class="ranking-card">
+                            <div class="ranking-position">${index + 1}</div>
+                            <div class="vessel-name">${vessel.ship_name}</div>
+                            <div class="vessel-class">${vessel.ship_class}</div>
+                            <div class="vessel-metric">${ranking.metric(vessel)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        function calculateEnvironmentalScore(data) {
+            // Calculate a score based on multiple factors
+            const avgCO2PerMile = data.reduce((sum, v) => sum + (v.total.co2 / v.total.distance), 0) / data.length;
+            const avgUtilization = data.reduce((sum, v) => sum + v.total.time_utilization_in_per, 0) / data.length;
+            const score = (1 - (avgCO2PerMile / 2)) * (avgUtilization / 100) * 100;
+            return `${formatNumber(score)}/100`;
+        }
+
+        // Initialize theme from localStorage
+        document.documentElement.setAttribute('data-theme', 
+            localStorage.getItem('theme') || 'light'
+        );
+
+        // Initialize the dashboard
+        applyFilters();
+
+        // Add new functions for chart interactions
+        function toggleChartType() {
+            if (charts.trendChart) {
+                const newType = charts.trendChart.config.type === 'line' ? 'bar' : 'line';
+                charts.trendChart.config.type = newType;
+                charts.trendChart.update();
+            }
+        }
+
+        function downloadChart() {
+            if (charts.trendChart) {
+                const canvas = document.getElementById('trendChart');
+                const link = document.createElement('a');
+                link.download = 'emission-trends.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }
+        }
+
+        // Update summary cards with real data
+        function updateSummaryCards(data) {
+            const filteredData = filterData(data);
+            const activeVessels = filteredData ? filteredData.length : 0;
+            const totalDistance = filteredData ? filteredData.reduce((sum, v) => sum + v.total.distance, 0) : 0;
+            const totalFuel = filteredData ? filteredData.reduce((sum, v) => sum + v.total.total_fuel, 0) : 0;
+            const totalCO2 = filteredData ? filteredData.reduce((sum, v) => sum + v.total.co2, 0) : 0;
+
+            document.getElementById('activeVessels').textContent = activeVessels;
+            document.getElementById('totalDistance').textContent = formatNumber(totalDistance);
+            document.getElementById('totalFuel').textContent = formatNumber(totalFuel);
+            document.getElementById('totalCO2').textContent = formatNumber(totalCO2);
+
+            document.getElementById('headerActiveVessels').textContent = activeVessels;
+            document.getElementById('headerTotalCO2').textContent = formatCompactNumber(totalCO2);
+            document.getElementById('headerLastUpdated').textContent = new Date().toLocaleTimeString();
+        }
+
+        function formatCompactNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        function showError(message) {
+            const loading = document.getElementById('loading');
+            const dataContainer = document.getElementById('dataContainer');
+            
+            // Clear existing content
+            dataContainer.innerHTML = '';
+            
+            // Show error message
+            loading.style.display = 'block';
+            loading.style.color = '#dc3545';
+            loading.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 2rem; color: #dc3545; margin-bottom: 10px;"></i>
+                    <p style="font-size: 1.1rem; margin: 0;">${message}</p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">Please try adjusting your filters and try again.</p>
+                </div>
+            `;
+            
+            // Reset summary cards to show empty state
+            updateSummaryCards([]);
+            
+            // Clear charts
+            if (charts.trendChart) {
+                charts.trendChart.destroy();
+                charts.trendChart = null;
+            }
+            
+            // Clear map
+            if (map) {
+                map.remove();
+                map = null;
+            }
+            
+            // Clear other visualizations
+            document.getElementById('impactMetrics').innerHTML = '';
+            document.getElementById('rankingList').innerHTML = '';
+        }
+    </script>
+</body>
+</html> 
