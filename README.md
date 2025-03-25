@@ -21,7 +21,7 @@ A web-based dashboard for viewing vessel emission data. This application display
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/japhettcw/emission-viewer.git
+git clone https://github.com/yafetwolde/emission-viewer.git
 ```
 
 2. Navigate to the project directory:
